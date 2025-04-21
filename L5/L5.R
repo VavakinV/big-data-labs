@@ -4,7 +4,9 @@ library(parameters)
 library(NbClust)
 library(mclust)
 library(easystats)
-library(klaR)
+library(e1071)
+library(party)
+library(randomForest)
 
 # Чтение файла
 data <- read.csv("countries.csv", 
@@ -190,9 +192,46 @@ test_data
 
 
 # 2. Классификация наивным методом Байеса
-train_filtered <- train_data[train_data$кластер != 5]
+# Обучение классификатора
+train_filtered <- train_data[train_data$кластер != 5, ]
 train_filtered
 
-naive_data <- klaR::NaiveBayes(кластер ~ ., data = train_filtered[, c(numeric_cols, "кластер")])
+naive_data <- e1071::naiveBayes(кластер ~ ., data = train_filtered[, c(numeric_cols, "кластер")])
 naive_data$tables
-naive_data$tables$рождаем
+naive_data$tables$длит_муж
+
+# Прогноз классификатора
+pred <- predict(naive_data, newdata = test_data[, numeric_cols])
+
+# Создание таблицы сопряженности
+conf_matrix <- table(
+  "Факт" = test_data$кластер,
+  "Прогноз" = pred
+)
+
+print(conf_matrix)
+acc <- mean(pred == test_data$кластер)
+paste("Точность: ", round(100*acc, 2), "%", sep="")
+
+# 3. Классификация деревьями решений
+myFormula <- кластер ~ рождаем + смертн + деск_см + длит_муж + длит_жен + доход
+
+countries_ctree <- party::ctree(myFormula, data=train_data)
+plot(countries_ctree)
+
+pred <- predict(countries_ctree, newdata=test_data)
+table(Факт = test_data$кластер, Прогноз = pred)
+
+acc <- mean(pred == test_data$кластер)
+paste("Точность: ", round(100*acc, 2), "%", sep="")
+
+# 4. Классификация случайным лесом
+rf <- randomForest::randomForest(кластер ~ ., data=train_data, ntree=100, proximity=TRUE)
+
+pred <- predict(rf, newdata = test_data)
+conf_matrix <- table(
+  "Факт" = test_data$кластер,
+  "Прогноз" = pred
+)
+print(conf_matrix)
+cat("Точность:", mean(pred == test_data$кластер) * 100, "%\n")
