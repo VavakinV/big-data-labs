@@ -4,6 +4,7 @@ library(parameters)
 library(NbClust)
 library(mclust)
 library(easystats)
+library(klaR)
 
 # Чтение файла
 data <- read.csv("countries.csv", 
@@ -164,3 +165,34 @@ legend("right",
        pch = 19,
        title = "Кластеры",
        cex = 1)  
+
+# ЧАСТЬ 2. Классификация
+# 1. Подготовка датасета
+complete_rows <- complete.cases(data[, numeric_cols])
+
+data$кластер <- NA
+data$кластер[complete_rows] <- clusters
+data$кластер <- as.factor(data$кластер)
+
+data_clean <- data[!is.na(data$кластер), ]
+
+set.seed(123)
+
+train_index <- sample(1:nrow(data_clean), 
+                      size = round(0.7 * nrow(data_clean)), 
+                      replace = FALSE)
+
+train_data <- data_clean[train_index, ]
+test_data <- data_clean[-train_index, ]
+
+train_data
+test_data
+
+
+# 2. Классификация наивным методом Байеса
+train_filtered <- train_data[train_data$кластер != 5]
+train_filtered
+
+naive_data <- klaR::NaiveBayes(кластер ~ ., data = train_filtered[, c(numeric_cols, "кластер")])
+naive_data$tables
+naive_data$tables$рождаем
