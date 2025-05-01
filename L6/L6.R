@@ -1,0 +1,79 @@
+library(car)
+
+# Чтение данных из CSV-файла
+data <- read.csv("athlete_events.csv", 
+                         header = TRUE, 
+                         stringsAsFactors = FALSE,
+                         na.strings = c("NA", ""),
+                         quote = "\"")
+
+str(data)
+head(data)
+
+data <- data[!duplicated(data$ID), ]
+
+# 1. Дескриптивный анализ
+basketball <- data[data$Sport == "Basketball", ]
+
+# Функция для установки общих границ
+get_limits <- function(var) {
+  range(na.omit(c(data[[var]], basketball[[var]])))
+}
+
+age_lim <- get_limits("Age")
+height_lim <- get_limits("Height")
+weight_lim <- get_limits("Weight")
+
+plot_pair <- function(var, title, unit, x_lim) {
+  par(mfrow = c(2, 2))
+  hist(basketball[[var]], main = paste(title, "(баскетбол)"), 
+       xlab = unit, col = "lightblue", xlim = x_lim)
+  hist(data[[var]], main = paste(title, "(все атлеты)"), 
+       xlab = unit, col = "lightgreen", xlim = x_lim)
+  
+  boxplot(basketball[[var]], main = paste(title, "(баскетбол)"), 
+          ylab = unit, ylim = x_lim)
+  boxplot(data[[var]], main = paste(title, "(все атлеты)"), 
+          ylab = unit, ylim = x_lim)
+  
+  par(mfrow = c(1, 1))
+}
+
+plot_pair("Age", "Возраст", "лет", age_lim)
+plot_pair("Height", "Рост", "см", height_lim)
+plot_pair("Weight", "Вес", "кг", weight_lim)
+
+cat("Баскетболисты:\n")
+print(summary(basketball[, c("Age", "Height", "Weight")]))
+cat("\nВсе атлеты:\n")
+print(summary(data[, c("Age", "Height", "Weight")]))
+
+# 2. Проверка нормальности
+basketball_weights <- na.omit(basketball$Weight)
+
+shapiro.test(basketball_weights)
+qqPlot(basketball_weights)
+
+# Пример околоидеального нормального распределения
+v <- rnorm(5000)
+qqPlot(v)
+
+# 3. Проверка гипотезы о среднем весе баскетболистов
+wilcox.test(basketball_weights, mu=median(basketball_weights), conf.int=TRUE)
+
+
+# 4. Проверка равенства дисперсий
+rugby_weights <- data[data$Sport == "Rugby" & data$Sex == "M" & !is.na(data$Weight), "Weight"]
+basketball_weights <- data[data$Sport == "Basketball" & data$Sex == "M" & !is.na(data$Weight), "Weight"]
+
+weights_df <- data.frame(
+  Weight = c(rugby_weights, basketball_weights),
+  Sport = c(rep("Rugby", length(rugby_weights)), 
+            rep("Basketball", length(basketball_weights)))
+)
+
+bartlett.test(Weight~Sport, data=weights_df)
+
+# 5. Проверка гипотезы о равенстве среднего веса баскетболистов и рэгбистов
+t.test(Weight~Sport, data=weights_df)
+
