@@ -59,6 +59,7 @@ v <- rnorm(5000)
 qqPlot(v)
 
 # 3. Проверка гипотезы о среднем весе баскетболистов
+t.test(basketball_weights, mu=mean(basketball_weights), conf.int=TRUE)
 wilcox.test(basketball_weights, mu=median(basketball_weights), conf.int=TRUE)
 
 
